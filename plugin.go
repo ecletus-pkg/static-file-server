@@ -11,11 +11,15 @@ import (
 	"github.com/moisespsena/go-path-helpers"
 	"gopkg.in/yaml.v2"
 
+	"os/exec"
+	"syscall"
+
 	"github.com/aghape/aghape"
 	"github.com/aghape/cli"
 	"github.com/aghape/plug"
 	"github.com/jinzhu/configor"
 	"github.com/moisespsena/go-error-wrap"
+	"github.com/moisespsena/go-topsort"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +27,8 @@ type Plugin struct {
 	plug.EventDispatcher
 	ConfigFile string
 	RouterKey  string
+	cmd        *exec.Cmd
+	cmdArgs    []string
 }
 
 func (p *Plugin) RequireOptions() []string {
@@ -50,7 +56,14 @@ func (p *Plugin) Init(options *plug.Options) {
 	if config.AutoStart {
 		r := options.GetInterface(p.RouterKey).(*router.Router)
 		r.PreServe(func(r *router.Router) {
-			go p.listenAndServer()
+			p.cmd = exec.Command(os.Args[0], p.cmdArgs...)
+			p.cmd.Stdout, p.cmd.Stderr = os.Stdout, os.Stderr
+			p.cmd.SysProcAttr = &syscall.SysProcAttr{
+				Pdeathsig: syscall.SIGTERM,
+			}
+			if err := p.cmd.Start(); err != nil {
+				panic(errwrap.Wrap(err, "Start Start Static File Server"))
+			}
 		})
 	}
 }
@@ -83,6 +96,20 @@ func (p *Plugin) OnRegister() {
 				return p.listenAndServer()
 			},
 		}
+
+		var (
+			cmdArgs []string
+			parent  = cmd
+		)
+
+		for parent != nil {
+			cmdArgs = append(cmdArgs, parent.Name())
+			parent = parent.Parent()
+		}
+
+		topsort.Reverse(cmdArgs)
+		p.cmdArgs = cmdArgs
+
 		cmd.AddCommand(&cobra.Command{
 			Use:   "printConfig",
 			Short: "Print Config",
