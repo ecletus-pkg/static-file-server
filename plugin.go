@@ -7,21 +7,22 @@ import (
 
 	"github.com/aghape/router"
 
-	"github.com/moisespsena/go-default-logger"
-	"github.com/moisespsena/go-path-helpers"
 	"gopkg.in/yaml.v2"
 
 	"os/exec"
-	"syscall"
 
 	"github.com/aghape/aghape"
 	"github.com/aghape/cli"
 	"github.com/aghape/plug"
 	"github.com/jinzhu/configor"
+	"github.com/moisespsena-go/httpu"
+	"github.com/moisespsena-go/task"
 	"github.com/moisespsena/go-error-wrap"
 	"github.com/moisespsena/go-topsort"
 	"github.com/spf13/cobra"
 )
+
+const DEFAULT_ADDR httpu.Addr = ":5001"
 
 type Plugin struct {
 	plug.EventDispatcher
@@ -35,65 +36,55 @@ func (p *Plugin) RequireOptions() []string {
 	return []string{p.RouterKey}
 }
 
-func (p *Plugin) loadConfig() (config Config, err error) {
-	config = Config{
-		Addr:         ":8000",
+func (p *Plugin) loadConfig() (cfg *Config, err error) {
+	cfg = &Config{
 		CrossOrigins: []string{"*"},
 	}
 
-	if err = configor.Load(&config, p.ConfigFile); err != nil && !os.IsNotExist(err) {
+	if err = configor.Load(cfg, p.ConfigFile); err != nil && !os.IsNotExist(err) {
 		err = errwrap.Wrap(err, "Load config file %q", p.ConfigFile)
 		return
 	}
-	return config, nil
+
+	if len(cfg.Servers) == 0 {
+		cfg.Servers = append(cfg.Servers, httpu.ServerConfig{Addr: DEFAULT_ADDR})
+	}
+
+	return cfg, nil
 }
 
 func (p *Plugin) Init(options *plug.Options) {
-	config, err := p.loadConfig()
+	cfg, err := p.loadConfig()
 	if err != nil {
 		return
 	}
-	if config.AutoStart {
+	if cfg.AutoStart {
 		r := options.GetInterface(p.RouterKey).(*router.Router)
-		r.PreServe(func(r *router.Router) {
-			p.cmd = exec.Command(os.Args[0], p.cmdArgs...)
-			p.cmd.Stdout, p.cmd.Stderr = os.Stdout, os.Stderr
-			p.cmd.SysProcAttr = &syscall.SysProcAttr{
-				Pdeathsig: syscall.SIGTERM,
-			}
-			if err := p.cmd.Start(); err != nil {
-				panic(errwrap.Wrap(err, "Start Start Static File Server"))
+		r.PreServe(func(r *router.Router, ta task.Appender) {
+			if err := ta.AddTask(cfg.CreateServer()); err != nil {
+				panic(err)
 			}
 		})
 	}
 }
 
-func (p *Plugin) listenAndServer() error {
-	config, err := p.loadConfig()
-	if err != nil {
-		return err
-	}
-	log := defaultlogger.NewLogger(path_helpers.GetCalledDir())
-
-	var w bytes.Buffer
-	yaml.NewEncoder(&w).Encode(config)
-
-	log.Debug("Start Static File Server with config:\n" + w.String())
-	NewServer(config).LisenAndServer()
-	return nil
-}
-
-func (p *Plugin) OnRegister() {
+func (p *Plugin) OnRegister(options *plug.Options) {
 	if p.ConfigFile == "" {
 		p.ConfigFile = filepath.Join(aghape.DEFAULT_CONFIG_DIR, "static_file_server.yaml")
 	}
 
 	cli.OnRegister(p, func(e *cli.RegisterEvent) {
+		agp := options.GetInterface(aghape.AGHAPE).(*aghape.Aghape)
 		cmd := &cobra.Command{
 			Use:   "staticFileServe",
 			Short: "Start Static File Server",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return p.listenAndServer()
+				cfg, err := p.loadConfig()
+				if err != nil {
+					return err
+				}
+				agp.AddTask(cfg.CreateServer())
+				return nil
 			},
 		}
 
