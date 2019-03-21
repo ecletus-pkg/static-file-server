@@ -5,15 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aghape/router"
+	"github.com/ecletus/router"
 
 	"gopkg.in/yaml.v2"
 
 	"os/exec"
 
-	"github.com/aghape/aghape"
-	"github.com/aghape/cli"
-	"github.com/aghape/plug"
+	"github.com/ecletus/ecletus"
+	"github.com/ecletus/cli"
+	"github.com/ecletus/plug"
 	"github.com/jinzhu/configor"
 	"github.com/moisespsena-go/httpu"
 	"github.com/moisespsena-go/task"
@@ -70,11 +70,11 @@ func (p *Plugin) Init(options *plug.Options) {
 
 func (p *Plugin) OnRegister(options *plug.Options) {
 	if p.ConfigFile == "" {
-		p.ConfigFile = filepath.Join(aghape.DEFAULT_CONFIG_DIR, "static_file_server.yaml")
+		p.ConfigFile = filepath.Join(ecletus.DEFAULT_CONFIG_DIR, "static_file_server.yaml")
 	}
 
 	cli.OnRegister(p, func(e *cli.RegisterEvent) {
-		agp := options.GetInterface(aghape.AGHAPE).(*aghape.Aghape)
+		agp := options.GetInterface(ecletus.AGHAPE).(*ecletus.Ecletus)
 		cmd := &cobra.Command{
 			Use:   "staticFileServe",
 			Short: "Start Static File Server",
