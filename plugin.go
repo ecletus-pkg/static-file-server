@@ -17,7 +17,7 @@ import (
 	"github.com/jinzhu/configor"
 	"github.com/moisespsena-go/httpu"
 	"github.com/moisespsena-go/task"
-	"github.com/moisespsena/go-error-wrap"
+	"github.com/moisespsena-go/error-wrap"
 	"github.com/moisespsena/go-topsort"
 	"github.com/spf13/cobra"
 )
