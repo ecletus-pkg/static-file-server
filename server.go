@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/moisespsena-go/task"
-	defaultlogger "github.com/moisespsena/go-default-logger"
+	defaultlogger "github.com/moisespsena-go/default-logger"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/moisespsena-go/httpu"
-	"github.com/moisespsena/go-path-helpers"
+	"github.com/moisespsena-go/path-helpers"
 )
 
 type Server struct {
