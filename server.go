@@ -21,7 +21,7 @@ type Server struct {
 
 func NewServer(cfg *Config) *Server {
 	srv := &Server{httpu.NewServer(&cfg.Config, cfg.CreateHandler()), cfg}
-	srv.SetLog(defaultlogger.NewLogger(path_helpers.GetCalledDir() + " SERVER"))
+	srv.SetLog(defaultlogger.GetOrCreateLogger(path_helpers.GetCalledDir() + " SERVER"))
 	srv.PreRun(func(ta task.Appender) error {
 		var w bytes.Buffer
 		yaml.NewEncoder(&w).Encode(srv.Config)

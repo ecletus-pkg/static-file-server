@@ -60,7 +60,7 @@ func (p *Plugin) Init(options *plug.Options) {
 	}
 	if cfg.AutoStart {
 		r := options.GetInterface(p.RouterKey).(*router.Router)
-		r.PreServe(func(r *router.Router, ta task.Appender) {
+		r.PreServe(func(srv *httpu.Server) {
 			if err := ta.AddTask(cfg.CreateServer()); err != nil {
 				panic(err)
 			}
@@ -74,7 +74,7 @@ func (p *Plugin) OnRegister(options *plug.Options) {
 	}
 
 	cli.OnRegister(p, func(e *cli.RegisterEvent) {
-		agp := options.GetInterface(ecletus.AGHAPE).(*ecletus.Ecletus)
+		agp := options.GetInterface(ecletus.ECLETUS).(*ecletus.Ecletus)
 		cmd := &cobra.Command{
 			Use:   "staticFileServe",
 			Short: "Start Static File Server",
